@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import logoFull from "@/assets/icons/Logo transparents (1).png";
+import { appButtonPrimary, appPageLead, appPageTitle } from "@/lib/appUi";
 
 export default function Home() {
   return (
@@ -17,16 +18,16 @@ export default function Home() {
             sizes="(max-width: 640px) 85vw, 280px"
           />
         </div>
-        <h1 className="text-4xl leading-tight font-semibold text-white sm:text-5xl">
+        <h1 className={`${appPageTitle} text-4xl leading-tight sm:text-5xl`}>
           Turn your event into a shared memory room.
         </h1>
-        <p className="text-sm text-zinc-300 sm:text-base">
+        <p className={appPageLead}>
           Create your event, invite guests by QR or link, and keep every moment
           in one beautiful place.
         </p>
         <Link
           href="/host/start"
-          className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-zinc-900 transition hover:scale-[1.01]"
+          className={`${appButtonPrimary} hover:scale-[1.01]`}
         >
           Create Event
         </Link>

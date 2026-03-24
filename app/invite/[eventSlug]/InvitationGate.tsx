@@ -1,7 +1,7 @@
 "use client";
 
 import TextField from "@mui/material/TextField";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 
@@ -30,22 +30,10 @@ import { store, type AppDispatch } from "@/store";
 import { errorMessageFromRtk } from "@/lib/errorMessageFromRtk";
 import { envelopeErrorMessage } from "@/lib/envelopeErrorMessage";
 import { centeredNumericCodeFieldSx } from "@/lib/muiCodeFieldSx";
+import { appButtonPrimary, appButtonSecondary } from "@/lib/appUi";
 import { firstZodIssueMessage } from "@/lib/zodErrors";
-
-const ONBOARDING_CARDS = [
-  {
-    title: "You’re among friends",
-    body: "This room is only for people who were invited. Be kind and keep the vibe positive.",
-  },
-  {
-    title: "Moments are shared here",
-    body: "Soon you’ll be able to comment and share photos. Your signed-in name will appear with what you post.",
-  },
-  {
-    title: "Ready when you are",
-    body: "You can skip these tips anytime. Tap below to open the event room.",
-  },
-] as const;
+import { GuestOnboardingSlides } from "@/components/invite/GuestOnboardingSlides";
+import { GUEST_ONBOARDING_SLIDES } from "@/content/guest-onboarding-slides";
 
 function InvalidAccess({ title, body }: { title: string; body: string }) {
   return (
@@ -106,6 +94,7 @@ export default function InvitationGate() {
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [onboardingIndex, setOnboardingIndex] = useState(0);
+  const onboardingScrollRef = useRef<HTMLDivElement>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [forgotPinEmail, setForgotPinEmail] = useState("");
   const [forgotPinOtp, setForgotPinOtp] = useState("");
@@ -124,6 +113,13 @@ export default function InvitationGate() {
     useRequestForgotPinOtpMutation();
   const [forgotPinReset, { isLoading: isResettingPin }] =
     useForgotPinResetMutation();
+
+  useLayoutEffect(() => {
+    if (step !== "onboarding") {
+      return;
+    }
+    onboardingScrollRef.current?.scrollTo({ left: 0, behavior: "auto" });
+  }, [step]);
 
   if (!access) {
     return (
@@ -375,9 +371,6 @@ export default function InvitationGate() {
     }
   };
 
-  const card = ONBOARDING_CARDS[onboardingIndex];
-  const isLastCard = onboardingIndex >= ONBOARDING_CARDS.length - 1;
-
   const busyEmail =
     isRequestingOtp ||
     isCheckingAccept ||
@@ -385,16 +378,38 @@ export default function InvitationGate() {
     isJoining;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 app-pad-y">
-      <div className="mb-6">
-        <p className="text-xs tracking-[0.28em] text-zinc-400 uppercase">Guest invitation</p>
-      </div>
-
-      {formError && (
-        <p className="mb-4 rounded-xl border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-          {formError}
-        </p>
+    <>
+      {step === "onboarding" && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-zinc-950">
+          {formError && (
+            <div className="shrink-0 border-b border-red-900/55 bg-red-950/45 px-4 py-3 text-center text-sm text-red-200">
+              {formError}
+            </div>
+          )}
+          <div className="min-h-0 min-w-0 flex-1">
+            <GuestOnboardingSlides
+              slides={GUEST_ONBOARDING_SLIDES}
+              scrollRef={onboardingScrollRef}
+              activeIndex={onboardingIndex}
+              onActiveIndexChange={setOnboardingIndex}
+              isJoining={isJoining}
+              onSkip={() => void goToFullRoomAfterJoin()}
+            />
+          </div>
+        </div>
       )}
+
+      {step !== "onboarding" && (
+        <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 app-pad-y">
+          <div className="mb-6">
+            <p className="text-xs tracking-[0.28em] text-zinc-400 uppercase">Guest invitation</p>
+          </div>
+
+          {formError && (
+            <p className="mb-4 rounded-xl border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+              {formError}
+            </p>
+          )}
 
       {step === "welcome" && (
         <section className="flex flex-1 flex-col justify-between gap-8">
@@ -432,7 +447,7 @@ export default function InvitationGate() {
                 setEntryMode("full");
                 setStep("email");
               }}
-              className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900"
+              className={appButtonPrimary}
             >
               Accept invitation
             </button>
@@ -443,7 +458,7 @@ export default function InvitationGate() {
                 setEntryMode("quick");
                 setStep("email");
               }}
-              className="rounded-full border border-zinc-700 bg-transparent px-5 py-3 text-sm font-semibold text-zinc-100 hover:border-zinc-500"
+              className={appButtonSecondary}
             >
               Already joined
             </button>
@@ -525,7 +540,7 @@ export default function InvitationGate() {
           <button
             type="submit"
             disabled={busyEmail}
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
+            className={appButtonPrimary}
           >
             {entryMode === "quick"
               ? isLoggingInWithPin
@@ -571,7 +586,7 @@ export default function InvitationGate() {
           <button
             type="submit"
             disabled={isSendingForgotOtp}
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
+            className={appButtonPrimary}
           >
             {isSendingForgotOtp ? "Sending…" : "Send code"}
           </button>
@@ -633,7 +648,7 @@ export default function InvitationGate() {
           <button
             type="submit"
             disabled={isResettingPin}
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
+            className={appButtonPrimary}
           >
             {isResettingPin ? "Saving…" : "Update PIN"}
           </button>
@@ -677,7 +692,7 @@ export default function InvitationGate() {
           <button
             type="submit"
             disabled={isVerifying}
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
+            className={appButtonPrimary}
           >
             {isVerifying ? "Verifying…" : "Verify"}
           </button>
@@ -711,60 +726,15 @@ export default function InvitationGate() {
           <button
             type="submit"
             disabled={isUpdatingProfile}
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
+            className={appButtonPrimary}
           >
             {isUpdatingProfile ? "Saving…" : "Next"}
           </button>
         </form>
       )}
 
-      {step === "onboarding" && card && (
-        <section className="flex flex-1 flex-col justify-between gap-8">
-          <div className="flex flex-col gap-6">
-            <div className="flex justify-center gap-2">
-              {ONBOARDING_CARDS.map((c, i) => (
-                <span
-                  key={c.title}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === onboardingIndex ? "w-8 bg-white" : "w-1.5 bg-zinc-600"
-                  }`}
-                  aria-hidden
-                />
-              ))}
-            </div>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-              <p className="text-xs tracking-[0.2em] text-zinc-500 uppercase">
-                Tip {onboardingIndex + 1} of 3
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold text-white">{card.title}</h2>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-400">{card.body}</p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => void goToFullRoomAfterJoin()}
-              disabled={isJoining}
-              className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
-            >
-              {isJoining
-                ? "Joining…"
-                : isLastCard
-                  ? "Enter event room"
-                  : "Skip to event room"}
-            </button>
-            {!isLastCard && (
-              <button
-                type="button"
-                onClick={() => setOnboardingIndex((i) => i + 1)}
-                className="rounded-full border border-zinc-700 px-5 py-3 text-sm font-semibold text-zinc-100 hover:border-zinc-500"
-              >
-                Next tip
-              </button>
-            )}
-          </div>
-        </section>
+        </main>
       )}
-    </main>
+    </>
   );
 }

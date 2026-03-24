@@ -23,6 +23,7 @@ import { setSession } from "@/modules/auth/auth.slice";
 import { useCreateEventMutation } from "@/modules/event/event.api";
 import { createEventInputSchema } from "@/modules/event/event.schema";
 import type { AppDispatch, RootState } from "@/store";
+import { appButtonPrimary } from "@/lib/appUi";
 import { errorMessageFromRtk } from "@/lib/errorMessageFromRtk";
 import { centeredNumericCodeFieldSx } from "@/lib/muiCodeFieldSx";
 import { firstZodIssueMessage } from "@/lib/zodErrors";
@@ -239,7 +240,7 @@ export default function HostStartPage() {
           <button
             type="submit"
             disabled={isRequestingOtp}
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
+            className={appButtonPrimary}
           >
             {isRequestingOtp ? "Sending…" : "Continue"}
           </button>
@@ -272,7 +273,7 @@ export default function HostStartPage() {
           <button
             type="submit"
             disabled={isVerifying}
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
+            className={appButtonPrimary}
           >
             {isVerifying ? "Verifying…" : "Verify"}
           </button>
@@ -306,7 +307,7 @@ export default function HostStartPage() {
           <button
             type="submit"
             disabled={isUpdatingProfile}
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
+            className={appButtonPrimary}
           >
             {isUpdatingProfile ? "Saving…" : "Next"}
           </button>
@@ -373,7 +374,7 @@ export default function HostStartPage() {
           <button
             type="submit"
             disabled={isCreatingEvent}
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
+            className={appButtonPrimary}
           >
             {isCreatingEvent ? "Creating…" : "Generate Invite"}
           </button>
@@ -402,7 +403,7 @@ export default function HostStartPage() {
           </div>
           <Link
             href={invitePayload.inviteUrl}
-            className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900"
+            className={`inline-flex items-center justify-center ${appButtonPrimary}`}
           >
             Open invitation
           </Link>

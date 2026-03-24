@@ -4,17 +4,49 @@ html {
   --background: #09090b;
   --foreground: #fafafa;
   color-scheme: dark;
+
+  --text-heading: #fafafa;
+  --text-muted: #a1a1aa;
+  --surface-action: #ffffff;
+  --surface-action-foreground: #18181b;
+  --surface-action-hover: #f4f4f5;
+  --border-outline: #3f3f46;
+  --text-on-outline: #f4f4f5;
+  --border-outline-hover: #71717a;
+  --step-active: #ffffff;
+  --step-inactive: #52525b;
 }
 
 html.light {
   --background: #ffffff;
   --foreground: #171717;
   color-scheme: light;
+
+  --text-heading: #171717;
+  --text-muted: #71717a;
+  --surface-action: #18181b;
+  --surface-action-foreground: #fafafa;
+  --surface-action-hover: #27272a;
+  --border-outline: #e4e4e7;
+  --text-on-outline: #18181b;
+  --border-outline-hover: #a1a1aa;
+  --step-active: #18181b;
+  --step-inactive: #d4d4d8;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-heading: var(--text-heading);
+  --color-muted: var(--text-muted);
+  --color-action: var(--surface-action);
+  --color-action-foreground: var(--surface-action-foreground);
+  --color-action-hover: var(--surface-action-hover);
+  --color-outline-border: var(--border-outline);
+  --color-outline-foreground: var(--text-on-outline);
+  --color-outline-border-hover: var(--border-outline-hover);
+  --color-step-active: var(--step-active);
+  --color-step-inactive: var(--step-inactive);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
