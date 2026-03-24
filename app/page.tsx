@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-zinc-950 px-6 py-10">
+    <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-zinc-950 px-6 app-pad-y">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(99,102,241,0.3),transparent_30%),radial-gradient(circle_at_50%_80%,rgba(236,72,153,0.2),transparent_35%)]" />
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-7 text-center">
         <p className="text-xs tracking-[0.35em] text-zinc-300 uppercase">Smylecards</p>

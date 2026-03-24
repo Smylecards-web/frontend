@@ -4,6 +4,11 @@ const alphaDash = /^[a-zA-Z0-9_-]+$/;
 
 export const otpContextSchema = z.enum(["host", "guest"]);
 
+export const eventPinSchema = z
+  .string()
+  .length(4, "Enter a 4-digit code")
+  .regex(/^\d{4}$/, "Use 4 digits (0–9) only");
+
 export const requestOtpInputSchema = z.object({
   email: z.string().trim().min(1, "Email is required").email("Invalid email"),
   context: otpContextSchema,

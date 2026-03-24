@@ -10,5 +10,6 @@ export function toCreateEventBody(payload: CreateEventRequest) {
     title: payload.title,
     cover_image_url: payload.coverImageUrl,
     video_message_url: payload.videoMessageUrl,
+    pin: payload.pin,
   };
 }

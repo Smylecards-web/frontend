@@ -1,14 +1,21 @@
 import { TAG_TYPES } from "@/constants/tagTypes";
 import { baseApi } from "@/services/api/baseApi";
 
+import type { AuthUser } from "@/modules/auth/auth.types";
+
 import { toCreateEventBody } from "./event.model";
 import type {
   CreateEventRequest,
   EventInvitationView,
   EventInvitePayload,
   EventRoomContext,
-  QuickEntryEligibility,
 } from "./event.types";
+
+export type LoginWithPinResponse = {
+  token: string;
+  tokenExpiresAt?: string | null;
+  user: AuthUser;
+};
 
 export const eventApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -32,14 +39,61 @@ export const eventApi = baseApi.injectEndpoints({
         { type: TAG_TYPES.INVITATION, id: eventSlug },
       ],
     }),
-    checkQuickEntryEligibility: builder.mutation<
-      QuickEntryEligibility,
+    checkAcceptInvite: builder.mutation<
+      { ok: boolean },
       { eventSlug: string; access: string; email: string }
     >({
       query: ({ eventSlug, access, email }) => ({
-        url: `/events/${eventSlug}/invite/check-quick-entry`,
+        url: `/events/${eventSlug}/invite/check-accept`,
         method: "POST",
         body: { access, email },
+      }),
+    }),
+    loginWithPin: builder.mutation<
+      LoginWithPinResponse,
+      { eventSlug: string; access: string; email: string; pin: string }
+    >({
+      query: ({ eventSlug, access, email, pin }) => ({
+        url: `/events/${eventSlug}/login-with-pin`,
+        method: "POST",
+        body: { access, email, pin },
+      }),
+    }),
+    joinEvent: builder.mutation<
+      { eventSlug: string },
+      { eventSlug: string; access: string; pin: string }
+    >({
+      query: ({ eventSlug, access, pin }) => ({
+        url: `/events/${eventSlug}/join`,
+        method: "POST",
+        body: { access, pin },
+      }),
+      invalidatesTags: [TAG_TYPES.EVENT],
+    }),
+    requestForgotPinOtp: builder.mutation<
+      { expiresInSeconds: number },
+      { eventSlug: string; access: string; email: string }
+    >({
+      query: ({ eventSlug, access, email }) => ({
+        url: `/events/${eventSlug}/forgot-pin/request`,
+        method: "POST",
+        body: { access, email },
+      }),
+    }),
+    forgotPinReset: builder.mutation<
+      LoginWithPinResponse,
+      {
+        eventSlug: string;
+        access: string;
+        email: string;
+        code: string;
+        newPin: string;
+      }
+    >({
+      query: ({ eventSlug, access, email, code, newPin }) => ({
+        url: `/events/${eventSlug}/forgot-pin/reset`,
+        method: "POST",
+        body: { access, email, code, new_pin: newPin },
       }),
     }),
     getEventRoomContext: builder.query<
@@ -64,5 +118,9 @@ export const {
   useCreateEventMutation,
   useGetEventRoomContextQuery,
   useGetInvitationQuery,
-  useCheckQuickEntryEligibilityMutation,
+  useCheckAcceptInviteMutation,
+  useLoginWithPinMutation,
+  useJoinEventMutation,
+  useRequestForgotPinOtpMutation,
+  useForgotPinResetMutation,
 } = eventApi;

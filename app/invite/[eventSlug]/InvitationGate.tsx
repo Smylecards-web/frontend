@@ -11,6 +11,7 @@ import {
   useVerifyOtpMutation,
 } from "@/modules/auth/auth.api";
 import {
+  eventPinSchema,
   requestOtpInputSchema,
   updateProfileInputSchema,
   verifyOtpInputSchema,
@@ -18,12 +19,17 @@ import {
 import { setSession } from "@/modules/auth/auth.slice";
 import {
   eventApi,
-  useCheckQuickEntryEligibilityMutation,
+  useCheckAcceptInviteMutation,
+  useForgotPinResetMutation,
   useGetInvitationQuery,
+  useJoinEventMutation,
+  useLoginWithPinMutation,
+  useRequestForgotPinOtpMutation,
 } from "@/modules/event/event.api";
 import { store, type AppDispatch } from "@/store";
 import { errorMessageFromRtk } from "@/lib/errorMessageFromRtk";
 import { envelopeErrorMessage } from "@/lib/envelopeErrorMessage";
+import { centeredNumericCodeFieldSx } from "@/lib/muiCodeFieldSx";
 import { firstZodIssueMessage } from "@/lib/zodErrors";
 
 const ONBOARDING_CARDS = [
@@ -43,7 +49,7 @@ const ONBOARDING_CARDS = [
 
 function InvalidAccess({ title, body }: { title: string; body: string }) {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col justify-center px-4 py-6">
+    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col justify-center px-4 app-pad-y">
       <p className="text-xs tracking-[0.28em] text-zinc-400 uppercase">Guest invitation</p>
       <h1 className="mt-4 text-3xl font-semibold text-white">{title}</h1>
       <p className="mt-3 text-sm leading-relaxed text-zinc-400">{body}</p>
@@ -51,7 +57,14 @@ function InvalidAccess({ title, body }: { title: string; body: string }) {
   );
 }
 
-type GuestStep = "welcome" | "email" | "otp" | "profile" | "onboarding";
+type GuestStep =
+  | "welcome"
+  | "email"
+  | "otp"
+  | "profile"
+  | "onboarding"
+  | "forgotPinEmail"
+  | "forgotPinFinish";
 
 type EntryMode = "full" | "quick";
 
@@ -88,18 +101,29 @@ export default function InvitationGate() {
   const [step, setStep] = useState<GuestStep>("welcome");
   const [entryMode, setEntryMode] = useState<EntryMode>("full");
   const [email, setEmail] = useState("");
+  const [eventPin, setEventPin] = useState("");
   const [code, setCode] = useState("");
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [onboardingIndex, setOnboardingIndex] = useState(0);
   const [formError, setFormError] = useState<string | null>(null);
+  const [forgotPinEmail, setForgotPinEmail] = useState("");
+  const [forgotPinOtp, setForgotPinOtp] = useState("");
+  const [forgotPinNew, setForgotPinNew] = useState("");
 
   const [requestOtp, { isLoading: isRequestingOtp }] = useRequestOtpMutation();
-  const [checkQuickEntry, { isLoading: isCheckingQuickEntry }] =
-    useCheckQuickEntryEligibilityMutation();
+  const [checkAcceptInvite, { isLoading: isCheckingAccept }] =
+    useCheckAcceptInviteMutation();
+  const [loginWithPin, { isLoading: isLoggingInWithPin }] =
+    useLoginWithPinMutation();
   const [verifyOtp, { isLoading: isVerifying }] = useVerifyOtpMutation();
   const [updateProfile, { isLoading: isUpdatingProfile }] =
     useUpdateProfileMutation();
+  const [joinEvent, { isLoading: isJoining }] = useJoinEventMutation();
+  const [requestForgotPinOtp, { isLoading: isSendingForgotOtp }] =
+    useRequestForgotPinOtpMutation();
+  const [forgotPinReset, { isLoading: isResettingPin }] =
+    useForgotPinResetMutation();
 
   if (!access) {
     return (
@@ -112,7 +136,7 @@ export default function InvitationGate() {
 
   if (isFetching && !data) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 py-6">
+      <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 app-pad-y">
         <p className="text-sm text-zinc-400">Loading invitation…</p>
       </main>
     );
@@ -134,7 +158,17 @@ export default function InvitationGate() {
     return null;
   }
 
-  const goToFullRoom = () => {
+  const goToFullRoomAfterJoin = async () => {
+    try {
+      await joinEvent({
+        eventSlug,
+        access,
+        pin: eventPin,
+      }).unwrap();
+    } catch (err) {
+      setFormError(errorMessageFromRtk(err));
+      return;
+    }
     if (roomHrefFull) {
       router.push(roomHrefFull);
     }
@@ -143,6 +177,34 @@ export default function InvitationGate() {
   const onEmailContinue = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError(null);
+    const pinResult = eventPinSchema.safeParse(eventPin);
+    if (!pinResult.success) {
+      setFormError(firstZodIssueMessage(pinResult.error));
+      return;
+    }
+
+    if (entryMode === "quick") {
+      try {
+        const result = await loginWithPin({
+          eventSlug,
+          access,
+          email: email.trim(),
+          pin: pinResult.data,
+        }).unwrap();
+        dispatch(
+          setSession({
+            token: result.token,
+            user: result.user,
+            tokenExpiresAt: result.tokenExpiresAt ?? null,
+          }),
+        );
+        router.push(roomHrefQuick);
+      } catch (err) {
+        setFormError(errorMessageFromRtk(err));
+      }
+      return;
+    }
+
     const parsed = requestOtpInputSchema.safeParse({
       email,
       context: "guest" as const,
@@ -153,13 +215,11 @@ export default function InvitationGate() {
       return;
     }
     try {
-      if (entryMode === "quick") {
-        await checkQuickEntry({
-          eventSlug,
-          access,
-          email: parsed.data.email,
-        }).unwrap();
-      }
+      await checkAcceptInvite({
+        eventSlug,
+        access,
+        email: parsed.data.email,
+      }).unwrap();
       await requestOtp(parsed.data).unwrap();
       setCode("");
       setStep("otp");
@@ -191,11 +251,6 @@ export default function InvitationGate() {
           tokenExpiresAt: result.tokenExpiresAt ?? null,
         }),
       );
-
-      if (entryMode === "quick") {
-        router.push(roomHrefQuick);
-        return;
-      }
 
       if (!hasGuestProfileComplete(result.user.username)) {
         setUsername(result.user.username?.trim() ?? "");
@@ -255,11 +310,82 @@ export default function InvitationGate() {
     }
   };
 
+  const onForgotPinEmailSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError(null);
+    if (!forgotPinEmail.trim()) {
+      setFormError("Email is required");
+      return;
+    }
+    try {
+      await requestForgotPinOtp({
+        eventSlug,
+        access,
+        email: forgotPinEmail.trim(),
+      }).unwrap();
+      setForgotPinOtp("");
+      setForgotPinNew("");
+      setStep("forgotPinFinish");
+    } catch (err) {
+      setFormError(errorMessageFromRtk(err));
+    }
+  };
+
+  const onForgotPinFinishSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError(null);
+    const otpParsed = verifyOtpInputSchema.safeParse({
+      email: forgotPinEmail.trim(),
+      code: forgotPinOtp,
+    });
+    const pinParsed = eventPinSchema.safeParse(forgotPinNew);
+    if (!otpParsed.success) {
+      setFormError(firstZodIssueMessage(otpParsed.error));
+      return;
+    }
+    if (!pinParsed.success) {
+      setFormError(firstZodIssueMessage(pinParsed.error));
+      return;
+    }
+    try {
+      const result = await forgotPinReset({
+        eventSlug,
+        access,
+        email: otpParsed.data.email,
+        code: otpParsed.data.code,
+        newPin: pinParsed.data,
+      }).unwrap();
+      dispatch(
+        setSession({
+          token: result.token,
+          user: result.user,
+          tokenExpiresAt: result.tokenExpiresAt ?? null,
+        }),
+      );
+      setEventPin(pinParsed.data);
+      setEmail(otpParsed.data.email);
+      setForgotPinEmail("");
+      setForgotPinOtp("");
+      setForgotPinNew("");
+      if (roomHrefFull) {
+        router.push(roomHrefFull);
+      }
+    } catch (err) {
+      setFormError(errorMessageFromRtk(err));
+    }
+  };
+
   const card = ONBOARDING_CARDS[onboardingIndex];
   const isLastCard = onboardingIndex >= ONBOARDING_CARDS.length - 1;
 
+  const busyEmail =
+    isRequestingOtp ||
+    isCheckingAccept ||
+    isLoggingInWithPin ||
+    isJoining;
+
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 py-6">
+    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 app-pad-y">
       <div className="mb-6">
         <p className="text-xs tracking-[0.28em] text-zinc-400 uppercase">Guest invitation</p>
       </div>
@@ -321,11 +447,15 @@ export default function InvitationGate() {
             >
               Already joined
             </button>
-            <p className="text-center text-xs leading-relaxed text-zinc-500">
-              First time? <span className="text-zinc-400">Accept invitation</span>. Returning with the
-              same email? <span className="text-zinc-400">Already joined</span> skips tips — only if
-              you&apos;ve accepted this event before.
-            </p>
+            <div className="flex flex-col gap-1.5 text-center text-xs leading-relaxed text-zinc-500">
+              <p>
+                First time? <span className="text-zinc-400">Accept invitation</span>.
+              </p>
+              <p>
+                Returning with the same email? <span className="text-zinc-400">Already joined</span>{" "}
+                uses email + PIN — only if you&apos;ve joined this event before.
+              </p>
+            </div>
           </div>
         </section>
       )}
@@ -338,8 +468,8 @@ export default function InvitationGate() {
             </h1>
             <p className="text-sm text-zinc-400">
               {entryMode === "quick"
-                ? "We’ll send a 6-digit code to confirm it’s you. You need to have accepted this invite once before with this email."
-                : "We’ll send a 6-digit verification code that expires in 10 minutes."}
+                ? "Enter the email and 4-digit PIN you set for this event."
+                : "We’ll send a 6-digit verification code that expires in 10 minutes. You’ll also create a 4-digit event PIN — you’ll use email + that code next time you return."}
             </p>
             <TextField
               label="Email"
@@ -350,6 +480,37 @@ export default function InvitationGate() {
               required
               autoComplete="email"
             />
+            <TextField
+              label="4-digit event PIN"
+              type="password"
+              value={eventPin}
+              onChange={(ev) =>
+                setEventPin(ev.target.value.replace(/[^0-9]/g, "").slice(0, 4))
+              }
+              required
+              helperText={
+                entryMode === "quick"
+                  ? "Enter the 4-digit code you set for this event."
+                  : "Create a 4-digit code (numbers only) for this event."
+              }
+              inputProps={{
+                inputMode: "numeric",
+                maxLength: 4,
+                autoComplete: "new-password",
+              }}
+              sx={centeredNumericCodeFieldSx(4)}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setFormError(null);
+                setForgotPinEmail(email.trim());
+                setStep("forgotPinEmail");
+              }}
+              className="self-start text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-300"
+            >
+              Forgot PIN?
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -363,14 +524,118 @@ export default function InvitationGate() {
           </section>
           <button
             type="submit"
-            disabled={isRequestingOtp || isCheckingQuickEntry}
+            disabled={busyEmail}
             className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
           >
-            {isCheckingQuickEntry
-              ? "Checking…"
-              : isRequestingOtp
+            {entryMode === "quick"
+              ? isLoggingInWithPin
+                ? "Signing in…"
+                : "Continue"
+              : isCheckingAccept || isRequestingOtp
                 ? "Sending…"
                 : "Continue"}
+          </button>
+        </form>
+      )}
+
+      {step === "forgotPinEmail" && (
+        <form
+          onSubmit={onForgotPinEmailSubmit}
+          className="flex flex-1 flex-col justify-between gap-6"
+        >
+          <section className="flex flex-col gap-4">
+            <h1 className="text-3xl font-semibold text-white">Reset your PIN</h1>
+            <p className="text-sm text-zinc-400">
+              Enter your email. We&apos;ll send a verification code so you can set a new PIN for this
+              event.
+            </p>
+            <TextField
+              label="Email"
+              type="email"
+              value={forgotPinEmail}
+              onChange={(ev) => setForgotPinEmail(ev.target.value)}
+              required
+              autoComplete="email"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setFormError(null);
+                setStep("email");
+              }}
+              className="self-start text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-300"
+            >
+              ← Back
+            </button>
+          </section>
+          <button
+            type="submit"
+            disabled={isSendingForgotOtp}
+            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
+          >
+            {isSendingForgotOtp ? "Sending…" : "Send code"}
+          </button>
+        </form>
+      )}
+
+      {step === "forgotPinFinish" && (
+        <form
+          onSubmit={onForgotPinFinishSubmit}
+          className="flex flex-1 flex-col justify-between gap-6"
+        >
+          <section className="flex flex-col gap-4">
+            <h1 className="text-3xl font-semibold text-white">Set a new PIN</h1>
+            <p className="text-sm text-zinc-400">
+              Enter the code from your email, then choose a new 4-digit PIN for this event.
+            </p>
+            <TextField
+              label="Verification code"
+              value={forgotPinOtp}
+              onChange={(ev) =>
+                setForgotPinOtp(ev.target.value.replace(/[^0-9]/g, "").slice(0, 6))
+              }
+              placeholder="000000"
+              required
+              inputProps={{
+                inputMode: "numeric",
+                maxLength: 6,
+                autoComplete: "one-time-code",
+              }}
+              sx={centeredNumericCodeFieldSx(6)}
+            />
+            <TextField
+              label="New 4-digit PIN"
+              type="password"
+              value={forgotPinNew}
+              onChange={(ev) =>
+                setForgotPinNew(ev.target.value.replace(/[^0-9]/g, "").slice(0, 4))
+              }
+              required
+              helperText="Enter exactly 4 numbers."
+              inputProps={{
+                inputMode: "numeric",
+                maxLength: 4,
+                autoComplete: "new-password",
+              }}
+              sx={centeredNumericCodeFieldSx(4)}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setFormError(null);
+                setStep("forgotPinEmail");
+              }}
+              className="self-start text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-300"
+            >
+              ← Back
+            </button>
+          </section>
+          <button
+            type="submit"
+            disabled={isResettingPin}
+            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
+          >
+            {isResettingPin ? "Saving…" : "Update PIN"}
           </button>
         </form>
       )}
@@ -395,14 +660,7 @@ export default function InvitationGate() {
                 maxLength: 6,
                 autoComplete: "one-time-code",
               }}
-              sx={{
-                "& .MuiOutlinedInput-input": {
-                  textAlign: "center",
-                  letterSpacing: "0.35em",
-                  fontSize: "1.375rem",
-                  fontWeight: 500,
-                },
-              }}
+              sx={centeredNumericCodeFieldSx(6)}
             />
             <button
               type="button"
@@ -475,7 +733,9 @@ export default function InvitationGate() {
               ))}
             </div>
             <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-              <p className="text-xs tracking-[0.2em] text-zinc-500 uppercase">Tip {onboardingIndex + 1} of 3</p>
+              <p className="text-xs tracking-[0.2em] text-zinc-500 uppercase">
+                Tip {onboardingIndex + 1} of 3
+              </p>
               <h2 className="mt-3 text-2xl font-semibold text-white">{card.title}</h2>
               <p className="mt-3 text-sm leading-relaxed text-zinc-400">{card.body}</p>
             </div>
@@ -483,10 +743,15 @@ export default function InvitationGate() {
           <div className="flex flex-col gap-3">
             <button
               type="button"
-              onClick={goToFullRoom}
-              className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900"
+              onClick={() => void goToFullRoomAfterJoin()}
+              disabled={isJoining}
+              className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:opacity-50"
             >
-              {isLastCard ? "Enter event room" : "Skip to event room"}
+              {isJoining
+                ? "Joining…"
+                : isLastCard
+                  ? "Enter event room"
+                  : "Skip to event room"}
             </button>
             {!isLastCard && (
               <button

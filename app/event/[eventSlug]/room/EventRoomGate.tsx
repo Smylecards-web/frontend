@@ -13,7 +13,7 @@ import { envelopeErrorMessage } from "@/lib/envelopeErrorMessage";
 
 function InvalidAccess({ title, body }: { title: string; body: string }) {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col justify-center px-4 py-6 text-center">
+    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col justify-center px-4 app-pad-y text-center">
       <p className="text-xs tracking-[0.3em] text-zinc-500 uppercase">Event room</p>
       <h1 className="mt-3 text-2xl font-semibold text-white">{title}</h1>
       <p className="mt-3 text-sm leading-relaxed text-zinc-400">{body}</p>
@@ -93,7 +93,7 @@ export default function EventRoomGate() {
 
   if (!clientReady) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 py-6">
+      <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 app-pad-y">
         <p className="text-sm text-zinc-400">Loading…</p>
       </main>
     );
@@ -101,7 +101,7 @@ export default function EventRoomGate() {
 
   if (!authToken) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 py-6 text-center">
+      <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 app-pad-y text-center">
         <p className="text-xs tracking-[0.3em] text-zinc-500 uppercase">Event room</p>
         <h1 className="mt-3 text-xl font-semibold text-white">Sign in required</h1>
         <p className="mt-3 max-w-md text-sm text-zinc-400">
@@ -116,7 +116,7 @@ export default function EventRoomGate() {
 
   if (isFetching && !data) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 py-6">
+      <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 app-pad-y">
         <p className="text-sm text-zinc-400">Joining the event room…</p>
       </main>
     );
@@ -126,7 +126,7 @@ export default function EventRoomGate() {
     const status = queryErrorStatus(error);
     if (status === 401) {
       return (
-        <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 py-6 text-center">
+        <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col items-center justify-center px-4 app-pad-y text-center">
           <p className="text-sm text-zinc-400">Session expired. Redirecting to sign in…</p>
         </main>
       );
@@ -147,7 +147,7 @@ export default function EventRoomGate() {
     const roomRoleLabel =
       viewer.eventRole === "host" ? "HOST" : "GUEST";
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 py-6">
+      <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 app-pad-y">
         <header className="mb-8 border-b border-zinc-800 pb-4 text-left">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>

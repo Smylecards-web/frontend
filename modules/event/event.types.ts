@@ -11,6 +11,7 @@ export type CreateEventRequest = {
   title: string;
   coverImageUrl?: string;
   videoMessageUrl?: string;
+  pin: string;
 };
 
 export type EventInvitePayload = {
@@ -25,10 +26,6 @@ export type EventInvitationView = {
   invitationText: string;
   coverImageUrl: string | null;
   videoUrl: string | null;
-};
-
-export type QuickEntryEligibility = {
-  eligible: boolean;
 };
 
 export type EventRoomContext = {

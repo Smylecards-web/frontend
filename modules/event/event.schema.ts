@@ -2,6 +2,8 @@ import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { z } from "zod";
 
+import { eventPinSchema } from "@/modules/auth/auth.schema";
+
 dayjs.extend(customParseFormat);
 
 const eventLocationSchema = z.object({
@@ -18,6 +20,7 @@ export const createEventInputSchema = z
     title: z.string().trim().min(1).max(160),
     coverImageUrl: z.string().trim().optional(),
     videoMessageUrl: z.string().trim().optional(),
+    pin: eventPinSchema,
   })
   .superRefine((v, ctx) => {
     const parsed = dayjs(v.date, "YYYY-MM-DD", true);

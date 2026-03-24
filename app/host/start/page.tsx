@@ -14,6 +14,7 @@ import {
   useVerifyOtpMutation,
 } from "@/modules/auth/auth.api";
 import {
+  eventPinSchema,
   requestOtpInputSchema,
   updateProfileInputSchema,
   verifyOtpInputSchema,
@@ -23,6 +24,7 @@ import { useCreateEventMutation } from "@/modules/event/event.api";
 import { createEventInputSchema } from "@/modules/event/event.schema";
 import type { AppDispatch, RootState } from "@/store";
 import { errorMessageFromRtk } from "@/lib/errorMessageFromRtk";
+import { centeredNumericCodeFieldSx } from "@/lib/muiCodeFieldSx";
 import { firstZodIssueMessage } from "@/lib/zodErrors";
 
 type HostStep =
@@ -40,6 +42,7 @@ export default function HostStartPage() {
   );
   const [step, setStep] = useState<HostStep>("email");
   const [email, setEmail] = useState("");
+  const [eventPin, setEventPin] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -70,16 +73,21 @@ export default function HostStartPage() {
   const onEmailSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError(null);
-    const parsed = requestOtpInputSchema.safeParse({
+    const parsedOtp = requestOtpInputSchema.safeParse({
       email,
       context: "host" as const,
     });
-    if (!parsed.success) {
-      setFormError(firstZodIssueMessage(parsed.error));
+    const parsedPin = eventPinSchema.safeParse(eventPin);
+    if (!parsedOtp.success) {
+      setFormError(firstZodIssueMessage(parsedOtp.error));
+      return;
+    }
+    if (!parsedPin.success) {
+      setFormError(firstZodIssueMessage(parsedPin.error));
       return;
     }
     try {
-      await requestOtp(parsed.data).unwrap();
+      await requestOtp(parsedOtp.data).unwrap();
       setStep("verify");
     } catch (err) {
       setFormError(errorMessageFromRtk(err));
@@ -158,6 +166,7 @@ export default function HostStartPage() {
       title: occasion,
       coverImageUrl: avatarUrl.trim() || undefined,
       videoMessageUrl: undefined,
+      pin: eventPin,
     });
     if (!parsed.success) {
       setFormError(firstZodIssueMessage(parsed.error));
@@ -173,6 +182,7 @@ export default function HostStartPage() {
         title: parsed.data.title,
         coverImageUrl: parsed.data.coverImageUrl?.trim() || undefined,
         videoMessageUrl: parsed.data.videoMessageUrl?.trim() || undefined,
+        pin: parsed.data.pin,
       }).unwrap();
       setInvitePayload(result);
       setStep("invite");
@@ -182,7 +192,7 @@ export default function HostStartPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 py-6">
+    <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 app-pad-y">
       <div className="mb-6">
         <p className="text-xs tracking-[0.28em] text-zinc-400 uppercase">Host flow</p>
       </div>
@@ -208,6 +218,22 @@ export default function HostStartPage() {
               placeholder="you@example.com"
               required
               autoComplete="email"
+            />
+            <TextField
+              label="4-digit event PIN"
+              type="password"
+              value={eventPin}
+              onChange={(e) =>
+                setEventPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))
+              }
+              required
+              helperText="Enter exactly 4 numbers. This PIN will be used to access your event."
+              inputProps={{
+                inputMode: "numeric",
+                maxLength: 4,
+                autoComplete: "new-password",
+              }}
+              sx={centeredNumericCodeFieldSx(4)}
             />
           </section>
           <button
@@ -240,14 +266,7 @@ export default function HostStartPage() {
                 maxLength: 6,
                 autoComplete: "one-time-code",
               }}
-              sx={{
-                "& .MuiOutlinedInput-input": {
-                  textAlign: "center",
-                  letterSpacing: "0.35em",
-                  fontSize: "1.375rem",
-                  fontWeight: 500,
-                },
-              }}
+              sx={centeredNumericCodeFieldSx(6)}
             />
           </section>
           <button
