@@ -227,7 +227,7 @@ export default function HostStartPage() {
                 setEventPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))
               }
               required
-              helperText="Enter exactly 4 numbers. This PIN will be used to access your event."
+              helperText="This PIN will be used to access your event."
               inputProps={{
                 inputMode: "numeric",
                 maxLength: 4,
