@@ -115,11 +115,13 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col bg-background text-foreground">
+      <head>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
+      </head>
+      <body className="flex min-h-full flex-col bg-background text-foreground">
         <ThemeProvider>
           <AppProviders>{children}</AppProviders>
         </ThemeProvider>
