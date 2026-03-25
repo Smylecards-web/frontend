@@ -1,6 +1,26 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 
 import InvitationGate from "./InvitationGate";
+
+type InvitationPageProps = {
+  params: Promise<{ eventSlug: string }>;
+};
+
+export async function generateMetadata({
+  params,
+}: InvitationPageProps): Promise<Metadata> {
+  const { eventSlug } = await params;
+
+  return {
+    title: `Invitation ${eventSlug}`,
+    description: "Private invitation room on Smylecards.",
+    robots: {
+      index: false,
+      follow: false,
+    },
+  };
+}
 
 export default function InvitationPage() {
   return (

@@ -1,6 +1,26 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 
 import EventRoomGate from "./EventRoomGate";
+
+type EventRoomPageProps = {
+  params: Promise<{ eventSlug: string }>;
+};
+
+export async function generateMetadata({
+  params,
+}: EventRoomPageProps): Promise<Metadata> {
+  const { eventSlug } = await params;
+
+  return {
+    title: `Event Room ${eventSlug}`,
+    description: "Private Smylecards event room.",
+    robots: {
+      index: false,
+      follow: false,
+    },
+  };
+}
 
 export default function EventRoomPage() {
   return (

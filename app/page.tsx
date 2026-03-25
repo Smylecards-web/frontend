@@ -1,8 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 import logoFull from "@/assets/icons/Logo transparents (1).png";
 import { appButtonPrimary, appPageLead, appPageTitle } from "@/lib/appUi";
+
+export const metadata: Metadata = {
+  title: "Home",
+  description:
+    "Create unforgettable events with Smylecards and invite guests to one shared memory room.",
+  alternates: {
+    canonical: "/",
+  },
+};
 
 export default function Home() {
   return (
